@@ -5,9 +5,14 @@ import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
@@ -27,11 +32,19 @@ public class MainActivity extends AppCompatActivity {
     Button btnCamara;
     ImageView imgFoto;
     String rutaImagen;
+    private final static int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 1;
+    private static String[] solicitudPermisosCamara = {
+            Manifest.permission.CAMERA,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+    };
+    private Toast toast;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        permisoStorage();
+        //permisosCamara();
         btnCamara = findViewById(R.id.btnCamara);
         imgFoto = findViewById(R.id.imgFoto);
 
@@ -45,8 +58,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void inicializarCamara() throws IOException {
-        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-
+        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);  //ACTION_IMAGE_CAPTURE
         File imagenArchivo = null;
         try {
             imagenArchivo = crearImagen();
@@ -54,12 +66,10 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(MainActivity.this, "Proceso incompleto", Toast.LENGTH_SHORT).show();
         }
         if(imagenArchivo != null){
-            Uri fotou = FileProvider.getUriForFile(this, "com.example.cameraapp.fileprovider", imagenArchivo);
-            intent.putExtra(MediaStore.EXTRA_OUTPUT, fotou);
+            Uri fotoUri = FileProvider.getUriForFile(this, "com.example.cameraapp.fileprovider", imagenArchivo);
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, fotoUri);
             alternativaStartForResult.launch(intent);
         }
-
-        //alternativaStartForResult.launch(intent);
     }
 
     private final ActivityResultLauncher<Intent> alternativaStartForResult =
@@ -82,18 +92,10 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
-
-
     private File crearImagen () throws IOException {
         String nombreImagen = "fotoCapturada_";
         File directorio = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-       //File directorio = getExternalFilesDir(Environment.getExternalStorageState(Environment.DIRECTORY_PICTURES), "MyCameraApp");
-
-        //File directorio = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "MyCameraApp");
-
         File imagen = File.createTempFile(nombreImagen, ".jpg", directorio);
-
-        //File imagen = new File(directorio + "Mary" + nombreImagen + ".jpg");
         rutaImagen = imagen.getAbsolutePath();
         return imagen;
     }
@@ -107,21 +109,68 @@ public class MainActivity extends AppCompatActivity {
         return imagen;
     }
 
-/*
-    ExifInterface ei = new ExifInterface(photoPath);
-    int orientation = ei.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_UNDEFINED);
-    Bitmap rotatedBitmap = null;
-    switch(orientation) {
-        case ExifInterface.ORIENTATION_ROTATE_90: rotatedBitmap = rotateImage(bitmap, 90);
-        break; case ExifInterface.ORIENTATION_ROTATE_180: rotatedBitmap = rotateImage(bitmap, 180);
-        break; case ExifInterface.ORIENTATION_ROTATE_270: rotatedBitmap = rotateImage(bitmap, 270); break;
-        case ExifInterface.ORIENTATION_NORMAL: default: rotatedBitmap = bitmap;
+    private void solicitandoPermisosCamara() {
+        int permissionCheck = ContextCompat.checkSelfPermission(
+                this, Manifest.permission.CAMERA);
+        if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
+            //Log.i("Mensaje", "No se tiene permiso para la Camara.");
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, 225);
+            //if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)){}
+
+
+            //ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        } else {
+           // Log.i("Mensaje", "Se tiene permiso para usar la camara!");
+        }
     }
 
-    public static Bitmap rotateImage(Bitmap source, float angle) {
-        Matrix matrix = new Matrix(); matrix.postRotate(angle);
-        return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
+    @SuppressLint("MissingSuperCall")
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        //super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        String avisoPopUp = "";
+        toast = Toast.makeText(this, avisoPopUp, Toast.LENGTH_LONG);
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    avisoPopUp = "Camara permitida";
+                } else {
+                    avisoPopUp = "No ha activado la camara!";
+                }
+                toast.show();
+                return;
+        }
+
+    }
+
+    private void permisoStorage(){
+        int permissionCheck = ContextCompat.checkSelfPermission(this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        if(permissionCheck!= PackageManager.PERMISSION_GRANTED){ //No tiene el permiso
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+            } else {
+                ActivityCompat.requestPermissions(this,
+                        solicitudPermisosCamara,
+                        MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
+            }
+        }
+    }
+/*
+    private void permisosCamara(){
+        int permissionCheck = ContextCompat.checkSelfPermission(this,
+                Manifest.permission.CAMERA);
+        if(permissionCheck!= PackageManager.PERMISSION_GRANTED){ //No tiene el permiso
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.CAMERA)) {
+            } else {
+                ActivityCompat.requestPermissions(this,
+                        solicitudPermisosCamara,
+                        100);
+            }
+        }
     }*/
+
 }
 
 
