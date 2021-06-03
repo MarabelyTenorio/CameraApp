@@ -12,10 +12,13 @@ import androidx.core.content.FileProvider;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.Matrix;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -29,36 +32,43 @@ import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
 
-    Button btnCamara;
-    ImageView imgFoto;
-    String rutaImagen;
+    private Button btnCamara;
+    private ImageView imgFoto;
+    private String rutaImagen;
+    private Toast toast;
     private final static int MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE = 1;
     private static String[] solicitudPermisosCamara = {
             Manifest.permission.CAMERA,
             Manifest.permission.WRITE_EXTERNAL_STORAGE
     };
-    private Toast toast;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        permisoStorage();
-        //permisosCamara();
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        getSupportActionBar().setBackgroundDrawable(new ColorDrawable(getResources().getColor(R.color.amarilloclaro, getTheme())));
         btnCamara = findViewById(R.id.btnCamara);
         imgFoto = findViewById(R.id.imgFoto);
-
+        permisoStorage();
         btnCamara.setOnClickListener(view -> {
-            try {
-                inicializarCamara();
-            } catch (IOException e) {
-                e.printStackTrace();
+            btnCamara.setBackgroundResource(R.drawable.btndesignpush);
+            imgFoto.setImageResource(R.drawable.photo);
+            if(ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) ==PackageManager.PERMISSION_GRANTED) {
+                try {
+                    inicializarCamara();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            else if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
+                Toast.makeText(MainActivity.this, "Active manualmente permisos", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     private void inicializarCamara() throws IOException {
-        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);  //ACTION_IMAGE_CAPTURE
+       Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         File imagenArchivo = null;
         try {
             imagenArchivo = crearImagen();
@@ -85,8 +95,10 @@ public class MainActivity extends AppCompatActivity {
                             Bitmap imgBitmap = BitmapFactory.decodeFile(rutaImagen);
                             imgBitmap = corrigiendoorientacion(imgBitmap);
                             imgFoto.setImageBitmap(imgBitmap);
+                            MediaStore.Images.Media.insertImage(getContentResolver(), imgBitmap, "holamundo" , "");
+                            //Se que esta desfasado el codigo
                         case MainActivity.RESULT_CANCELED:
-                            Toast.makeText(MainActivity.this, "Proceso completado", Toast.LENGTH_SHORT).show();
+                            btnCamara.setBackgroundResource(R.drawable.btndesign);
                             break;
                     }
                 }
@@ -109,34 +121,20 @@ public class MainActivity extends AppCompatActivity {
         return imagen;
     }
 
-    private void solicitandoPermisosCamara() {
-        int permissionCheck = ContextCompat.checkSelfPermission(
-                this, Manifest.permission.CAMERA);
-        if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
-            //Log.i("Mensaje", "No se tiene permiso para la Camara.");
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, 225);
-            //if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)){}
-
-
-            //ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        } else {
-           // Log.i("Mensaje", "Se tiene permiso para usar la camara!");
-        }
-    }
-
     @SuppressLint("MissingSuperCall")
     @Override
     public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
-        //super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         String avisoPopUp = "";
-        toast = Toast.makeText(this, avisoPopUp, Toast.LENGTH_LONG);
         switch (requestCode) {
             case MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE:
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    avisoPopUp = "Camara permitida";
+                    avisoPopUp = "Permisos aceptados!";
+
                 } else {
-                    avisoPopUp = "No ha activado la camara!";
+                    avisoPopUp = "Permisos deben ser aprobados!";
+
                 }
+                toast = Toast.makeText(this, avisoPopUp, Toast.LENGTH_LONG);
                 toast.show();
                 return;
         }
@@ -147,29 +145,12 @@ public class MainActivity extends AppCompatActivity {
         int permissionCheck = ContextCompat.checkSelfPermission(this,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE);
         if(permissionCheck!= PackageManager.PERMISSION_GRANTED){ //No tiene el permiso
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
             } else {
-                ActivityCompat.requestPermissions(this,
-                        solicitudPermisosCamara,
-                        MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
+                ActivityCompat.requestPermissions(this, solicitudPermisosCamara, MY_PERMISSIONS_REQUEST_READ_EXTERNAL_STORAGE);
             }
         }
     }
-/*
-    private void permisosCamara(){
-        int permissionCheck = ContextCompat.checkSelfPermission(this,
-                Manifest.permission.CAMERA);
-        if(permissionCheck!= PackageManager.PERMISSION_GRANTED){ //No tiene el permiso
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.CAMERA)) {
-            } else {
-                ActivityCompat.requestPermissions(this,
-                        solicitudPermisosCamara,
-                        100);
-            }
-        }
-    }*/
 
 }
 
